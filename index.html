@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <script src="./dados.js" defer></script>
+   
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Gas Fee</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        th, td {
+            border: 1px solid #dddddd;
+            text-align: left;
+            padding: 8px;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h1>GAS FEE CALCULATOR</h1>
+
+    <label for="filtroRede">Filter by Network:</label>
+    <select id="filtroRede" onchange="filtrarTabela()">
+        <option value="">Todos</option>
+        <option value="Ethereum">Ethereum</option>
+        <option value="matic-network">matic-network</option>
+        <option value="Arbitrum">Arbitrum</option>
+        <option value="Optimism">Optimism</option>
+    </select>
+
+    <label for="filtroTipoOperacao">Filter by Smart Contract:</label>
+<select id="filtroTipoOperacao" onchange="filtrarTabela()">
+    <option value="">Todos</option>
+    <option value="DidRegistry">DidRegistry</option>
+    <option value="schemaRegistry">schemaRegistry</option>
+    <option value="CredentialDefinition Registry">CredentialDefinition Registry</option>
+    <option value="ValidatorControl">ValidatorControl</option>
+    <option value="AccountControl">AccountControl</option>
+    <option value="RoleControl">RoleControl</option>
+    <option value="UpgradeControl">UpgradeControl</option>
+    <!-- Adicione mais opções conforme necessário -->
+</select>
+
+<label for="filtroOperacao">Filter by Interaction:</label>
+<select id="filtroOperacao" onchange="filtrarTabela()">
+    <option value="">Todos</option>
+    <option value="Deploy smart contract">Deploy smart contract</option>
+    <option value="CreateDid">CreateDid</option>
+    <option value="deactivateDid">deactivateDid</option>
+    <option value="Initialize">Initialize</option>
+    <option value="updateDid">updateDid</option>
+    <option value="CreateSchema">CreateSchema</option>
+    <option value="createCredentialDefinition">createCredentialDefinition</option>
+    /* <option value="addValidator">addValidator</option>
+    <option value="removeValidator">removeValidator</option>
+    <option value="assignRole">assignRole</option>
+    <option value="revokeRole">revokeRole</option>
+    <option value="approve">approve</option>
+    <option value="propose">propose</option>*/
+    <!-- Adicione mais opções conforme necessário -->
+</select>
+
+
+    <table id="tabelaOperacoes">
+        <thead>
+            <tr>
+                <th>Network</th>
+                <th>Smart Contract</th>
+                <th>Interaction</th>
+                <th>Usage by txn (Gwei)</th>
+                <th>Average Gas Fee (Gwei)</th>
+                <th>TX fee (ETH)</th>
+                <th id="price-header">Price:</th>
+                <th>Costs:</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Linhas da tabela serão adicionadas dinamicamente aqui usando JavaScript -->
+        </tbody>
+        <tfoot>
+            <tr id="totalRow" style="display: none;">
+                <td colspan="7" style="text-align: right;"><strong>Total:</strong></td>
+                <td id="totalRS">R$ 0,00</td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <script>
+        // Constantes para índices das colunas
+        const COL_NETWORK = 0;
+        const COL_SMART_CONTRACT = 1;
+        const COL_INTERACTION = 2;
+        const COL_USAGE = 3;
+        const COL_AVERAGE_GAS_FEE = 4;
+        const COL_TX_FEE_ETH = 5;
+        const COL_PRICE = 6;
+        const COL_COSTS = 7;
+       
+        // Dados fornecidos
+        
+        
+        async function obterPrecosAtualizados() {
+    try {
+        // Adicionando um timestamp à URL para evitar o cache
+        const timestamp = new Date().getTime();
+        const apiUrl = `https://api.coingecko.com/api/v3/simple/price?ids=ethereum%2Coptimism%2Carbitrum%2Cmatic-network&vs_currencies=brl&x_cg_demo_api_key=CG-nfoK2jzTytcXevCSm697f3yz&_=${timestamp}`;
+        
+        const response = await fetch(apiUrl, {
+            headers: {
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache',
+            },
+        });
+        const dadosPrecos = await response.json();
+
+        // Adiciona este log para verificar a resposta da API
+        console.log('Dados de preços:', dadosPrecos);
+
+        // Verifica se a resposta contém os dados esperados
+        if (!dadosPrecos || Object.keys(dadosPrecos).length === 0) {
+            console.error('Resposta da API não contém os dados esperados.');
+            return;
+        }
+
+        // Atualiza os valores na tabela com base nos dados da API
+        dados.forEach((dado, index) => {
+            const network = dado[COL_NETWORK].toLowerCase(); // Ajuste para obter as chaves corretas
+            atualizarCelulasTabela(index, network, dadosPrecos);
+        });
+
+    } catch (erro) {
+        console.error('Erro ao obter preços atualizados:', erro);
+    }
+}
+
+
+// Função para adicionar linhas à tabela com base nos filtros
+async function adicionarLinhas() {
+    const tabela = document.getElementById("tabelaOperacoes");
+    const corpoTabela = tabela.getElementsByTagName("tbody")[0];
+    const totalRSElement = document.getElementById("totalRS");
+    const totalRow = document.getElementById("totalRow");
+    let totalRS = 0;
+
+    // Limpa as linhas existentes na tabela
+    corpoTabela.innerHTML = "";
+
+    // Obtém os valores selecionados nos filtros
+    const filtroRede = document.getElementById("filtroRede").value.toLowerCase();
+    const filtroTipoOperacao = document.getElementById("filtroTipoOperacao").value.toLowerCase();
+    const filtroOperacao = document.getElementById("filtroOperacao").value.toLowerCase();
+
+    // Mapeia os índices correspondentes aos filtros selecionados
+    const indicesFiltrados = dados.reduce((acc, dado, index) => {
+        const networkLower = dado[COL_NETWORK].toLowerCase();
+        const tipoOperacaoLower = dado[COL_SMART_CONTRACT].toLowerCase();
+        const operacaoLower = dado[COL_INTERACTION].toLowerCase();
+
+        if ((filtroRede === "" || networkLower === filtroRede) &&
+            (filtroTipoOperacao === "" || tipoOperacaoLower === filtroTipoOperacao) &&
+            (filtroOperacao === "" || operacaoLower === filtroOperacao)) {
+            acc.push(index);
+            totalRS += parseFloat(dado[COL_COSTS].replace("R$ ", "").replace(",", "."));
+        }
+
+        return acc;
+    }, []);
+
+    // Adiciona as linhas filtradas à tabela
+    indicesFiltrados.forEach(index => {
+        const linha = corpoTabela.insertRow();
+        dados[index].forEach((valor, colIndex) => {
+            const celula = linha.insertCell(colIndex);
+            celula.textContent = valor;
+
+            // Se a coluna for a de "Price", adiciona um ID para facilitar a atualização
+            if (colIndex === COL_PRICE) {
+                celula.id = `price-${index}`;
+            }
+
+            // Se a coluna for a de "Costs", adiciona um ID para facilitar a atualização
+            if (colIndex === COL_COSTS) {
+                celula.id = `costs-${index}`;
+            }
+        });
+    });
+
+    // Atualiza o total de custos no rodapé da tabela
+    totalRSElement.textContent = `R$ ${totalRS.toFixed(2)}`;
+
+    // Chama a função para obter os preços atualizados
+    await obterPrecosAtualizados();
+}
+
+// ...
+
+
+function atualizarCelulasTabela(index, network, dadosPrecos) {
+    const preco = dadosPrecos[network]?.brl || 'N/A';
+
+
+    console.log(`Preço para ${network}: ${preco}`);
+
+
+    const celulaPrice = document.getElementById(`price-${index}`);
+
+    // Verifica se a célula foi encontrada antes de tentar atualizar o conteúdo
+    if (celulaPrice) {
+        // Verifica se o valor é numérico antes de atualizar a célula
+        if (!isNaN(preco)) {
+            celulaPrice.textContent = `R$ ${preco.toFixed(2)}`;
+
+            // Atualiza a coluna de "Costs" com base no preço e TX fee (ETH)
+            const txFeeEth = parseFloat(dados[index][COL_TX_FEE_ETH]);
+            const costs = txFeeEth * preco;
+            const celulaCosts = document.getElementById(`costs-${index}`);
+
+            // Verifica se a célula foi encontrada antes de tentar atualizar o conteúdo
+            if (celulaCosts) {
+                celulaCosts.textContent = `R$ ${costs.toFixed(3)}`;
+            }
+        } else {
+            celulaPrice.textContent = 'N/A';
+        }
+    }
+}
+
+
+
+// Chama a função para adicionar as linhas quando a página carregar
+window.onload = adicionarLinhas;
+
+// Função para chamar a função de filtro quando ocorrerem mudanças nos seletores
+function filtrarTabela() {
+adicionarLinhas();
+}
+</script>
+</body>
+</html>
+

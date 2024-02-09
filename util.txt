@@ -1,0 +1,13 @@
+ subir container: sudo docker-compose up --build -d
+
+
+
+Rash dos contratos na sepolia:
+
+DidRegistry : 0xaF3abB8Ef3993312fBBFf4836D6A9450Dc4Cd01a
+schemaRegistry: 0x9aCC1114Ff9C8b787D6cdB89a43611cEe4F9a76B
+CredentialDefinition : 0x96e58B6FC747a776603835fDdC7A6c6655196Aa4
+ValidatorControl: 0x8c2E5E34340D35Ec90A35DC4DDf09B5508E2ec42
+AccountControl: 0x206326140d35C2A5c612AB0f62ae1D53aF33389B
+
+rolecontrol: 0x880D271800467CD20c18d8A91457DEf6EC4C1E1a

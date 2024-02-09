@@ -1,0 +1,18 @@
+{
+    "name": "calculadora",
+    "version": "1.0.0",
+    "description": "Sua descrição aqui",
+    "main": "index.js",
+    "scripts": {
+      "start": "http-server -p 8000"
+    },
+    "keywords": [
+      "calculadora",
+      "outras",
+      "palavras-chave"
+    ],
+    "author": "Seu Nome",
+    "license": "ISC",
+    "dependencies": {}
+  }
+  
